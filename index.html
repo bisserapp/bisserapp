@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#009578">
+    
+    <title>Bisser Application</title>
+    
+    <link rel="stylesheet" href="src/master.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="images/icon2.png">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1"
+      crossorigin="anonymous"
+    />
+
+   
+
+    <style>
+      .inUse {
+        background-color: aqua;
+      }
+      .notInUse {
+        background-color: lightgreen;
+      }
+      .break{
+        background-color: red;
+      }
+    </style>
+  </head>
+  <body>
+
+
+
+    <script src="src/index.js"></script>
+    <!--  FireBase Connection  -->
+
+<!-- The core Firebase JS SDK is always required and must be listed first -->
+<script src="https://www.gstatic.com/firebasejs/8.2.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.2.0/firebase-firestore.js"></script>
+
+<!-- TODO: Add SDKs for Firebase products that you want to use
+     https://firebase.google.com/docs/web/setup#available-libraries -->
+<script src="https://www.gstatic.com/firebasejs/8.2.0/firebase-analytics.js"></script>
+
+<script>
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  var firebaseConfig = {
+    apiKey: "AIzaSyC_ZN5w5j5zK2DmOgIDKkOexY4qlz3ULpk",
+    authDomain: "bisser-application.firebaseapp.com",
+    databaseURL: "https://bisser-application-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "bisser-application",
+    storageBucket: "bisser-application.appspot.com",
+    messagingSenderId: "636344405137",
+    appId: "1:636344405137:web:bce94ef4739f072a2a4330",
+    measurementId: "G-B2S0E5BL97"
+  };
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+
+  firebase.analytics();
+</script>
+
+    <!--  FireBase Connection  -->
+
+
+
+
+    <div class="contaner">
+      <div id="tl" style="width: 50%; margin: auto">
+        <h1>Time table</h1>
+
+        <table class="table table-bordered">
+          <tr>
+            <td>Start</td>
+            <td>End</td>
+            <td>Who</td>
+          </tr>
+          <tr
+            v-for="x in line"
+            v-bind:class="{notInUse:!x.isInUse, inUse:x.isInUse, break:x.inBreak}"
+          >
+
+            <td>{{x.slot}}</td>
+            <td>{{x.slot2}}</td>
+            <td>{{x.who}}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    <script>
+
+     // Example for DB
+     let tt = {
+        line: [
+          { start: 1, end: 2, who: "Tal Ayash" },
+          { start: 4, end: 5, who: "izik" }
+        ],
+      };
+      
+
+      // Add Appointments From Firestore DB
+
+      db.collection('appointments').get().then((element) => {
+      element.docs.forEach(doc => {
+      console.log(doc.data());
+
+      tt.line.push(doc.data());
+    })
+})
+
+      
+      // Define start & end time job jour
+      const timeDef = { 
+        startWork: 9, 
+        endWork: 21
+      };
+      
+ 
+
+    console.log(tt.line)
+
+      const stt = { line: toShowTimeTable(tt) };
+      console.log(stt);
+      const ap = new Vue({
+        el: "#tl",
+        data: stt,
+      });
+
+
+      // To show time table
+      function toShowTimeTable(data) {
+        const res = [];
+        const multData = multiplaySlots(data);
+        
+        let hour = timeDef.startWork;
+        let timeUnitValue = 0.75;
+        
+        const num = ((timeDef.endWork - timeDef.startWork) * timeUnitValue**-1);
+        let j = 0;
+       
+        for (let i = 0; i < num; i++) {
+          const temp = {};
+
+          
+          temp.slot = convertNumToTime(hour);
+          temp.slot2 = convertNumToTime(hour+ timeUnitValue);
+          
+          hour+=timeUnitValue
+
+          if (j < multData.length && multData[j].start - 1 <= i) {
+            temp.isInUse = true;
+            if(multData[j].who == "Break"){
+              temp.inBreak = true;
+              temp.isInUse = false;
+            }
+            
+            temp.who = multData[j].who;
+            j++;
+          } 
+          else {
+            temp.isInUse = false;
+            temp.who = "";
+          }
+          res[i] = temp;
+        }
+        return res;
+      }
+
+      // Multiplay
+      function multiplaySlots(data) {
+        const arr = data.line;
+        const res = [];
+        for (let i = 0; i < arr.length; i++) {
+          //tm.start = arr[i].start;
+
+          for (let j = 0; j < arr[i].end - arr[i].start + 1; j++) {
+            const tm = {};
+            tm.who = arr[i].who;
+            tm.start = arr[i].start + j;
+            res.push(tm);
+          }
+        }
+        return res;
+      }
+
+
+      // Converte Double variable to Hour (Example: 8.5 => 08:30)
+      function convertNumToTime(number) {
+        // Check sign of given number
+        var sign = (number >= 0) ? 1 : -1;
+
+        // Set positive value of number of sign negative
+        number = number * sign;
+
+        // Separate the int from the decimal part
+        var hour = Math.floor(number);
+        var decpart = number - hour;
+
+        var min = 1 / 60;
+        // Round to nearest minute
+        decpart = min * Math.round(decpart / min);
+
+        var minute = Math.floor(decpart * 60) + '';
+
+        // Add padding if need
+        if (minute.length < 2) {
+          minute = '0' + minute; 
+        }
+
+        // Add Sign in final result
+        sign = sign == 1 ? '' : '-';
+
+        // Concate hours and minutes
+        time = sign + hour + ':' + minute;
+
+        return time;
+    }
+
+
+    </script>
+  </body>
+</html>
